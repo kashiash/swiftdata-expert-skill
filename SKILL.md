@@ -1,3 +1,8 @@
+---
+name: swiftdata-expert
+description: Expert guidance for SwiftData on iOS 17+ and macOS 14+. Use when the user asks about SwiftData models, relationships, queries, predicates, ModelContext, ModelContainer, CloudKit sync, schema migrations, SwiftUI integration with @Query or @Bindable, performance optimization, testing with in-memory containers, or debugging silent save failures and crashes related to SwiftData.
+---
+
 # SwiftData Expert Skill
 
 **Version:** 1.0.0  
