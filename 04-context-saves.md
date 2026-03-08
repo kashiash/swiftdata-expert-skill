@@ -820,3 +820,150 @@ Button("Undo") { undoManager?.undo() }
 | Action names | Yes | No |
 | Memory | Uses stack | No overhead |
 | Use case | User-facing | Error recovery |
+
+
+## Batch Delete
+
+Delete multiple objects matching a predicate:
+
+```swift
+// Delete all completed tasks
+try? modelContext.delete(
+    model: Task.self,
+    where: #Predicate { $0.isCompleted }
+)
+
+// Delete all tasks older than 30 days
+let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: .now)!
+try? modelContext.delete(
+    model: Task.self,
+    where: #Predicate { $0.createdAt < thirtyDaysAgo }
+)
+
+// Delete ALL objects of a type
+try? modelContext.delete(model: Task.self)
+```
+
+**Benefits:**
+- More efficient than deleting one by one
+- Single database operation
+- Automatic relationship handling
+
+**Use cases:**
+- Cleanup operations
+- Bulk data removal
+- Cache clearing
+
+## Cancelable Edit Flow
+
+Allow users to cancel edits without saving:
+
+```swift
+struct TaskEditor: View {
+    @Environment(\.dismiss) var dismiss
+    let task: Task
+    
+    @State private var title: String = ""
+    @State private var notes: String = ""
+    @State private var isCompleted: Bool = false
+    
+    var body: some View {
+        Form {
+            TextField("Title", text: $title)
+            TextField("Notes", text: $notes)
+            Toggle("Completed", isOn: $isCompleted)
+        }
+        .task {
+            // Copy model values to @State
+            title = task.title
+            notes = task.notes
+            isCompleted = task.isCompleted
+        }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss() // Discard changes
+                }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    // Update model from @State
+                    task.title = title
+                    task.notes = notes
+                    task.isCompleted = isCompleted
+                    dismiss()
+                }
+            }
+        }
+    }
+}
+```
+
+**Pattern:**
+1. Copy model properties to @State in .task
+2. User edits @State properties
+3. Save: update model from @State
+4. Cancel: dismiss without updating model
+
+**Benefits:**
+- Clean cancel behavior
+- No need for rollback
+- Works with autosave enabled
+- Familiar iOS pattern
+
+## Combined Insert/Update View
+
+Single view for both creating and editing:
+
+```swift
+struct TaskEditor: View {
+    @Environment(\.modelContext) var modelContext
+    @Environment(\.dismiss) var dismiss
+    
+    let task: Task? // nil = insert, non-nil = update
+    
+    @State private var title: String = ""
+    @State private var notes: String = ""
+    
+    var isNewTask: Bool { task == nil }
+    
+    var body: some View {
+        Form {
+            TextField("Title", text: $title)
+            TextField("Notes", text: $notes)
+        }
+        .task {
+            if let task {
+                title = task.title
+                notes = task.notes
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button(isNewTask ? "Add" : "Save") {
+                    if isNewTask {
+                        let newTask = Task(title: title, notes: notes)
+                        modelContext.insert(newTask)
+                    } else {
+                        task?.title = title
+                        task?.notes = notes
+                    }
+                    dismiss()
+                }
+                .disabled(title.isEmpty)
+            }
+        }
+        .navigationTitle(isNewTask ? "New Task" : "Edit Task")
+    }
+}
+
+// Usage
+// Insert: TaskEditor(task: nil)
+// Update: TaskEditor(task: existingTask)
+```
+
+**Benefits:**
+- Less code duplication
+- Consistent UI
+- Single source of truth
+- Easier maintenance

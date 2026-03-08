@@ -524,3 +524,90 @@ modelContext.insert(newUser)
 5. **Cache FetchDescriptors** for reuse
 6. **Use fetchCount** instead of fetch + count
 7. **Debounce search** to reduce queries
+
+
+## Comparable Protocol
+
+Make models Comparable for simplified sorting:
+
+```swift
+@Model
+class Task: Comparable {
+    var title: String
+    var priority: Int
+    var dueDate: Date
+    
+    static func < (lhs: Task, rhs: Task) -> Bool {
+        if lhs.priority != rhs.priority {
+            return lhs.priority > rhs.priority // Higher priority first
+        }
+        return lhs.dueDate < rhs.dueDate // Earlier date first
+    }
+    
+    init(title: String, priority: Int, dueDate: Date) {
+        self.title = title
+        self.priority = priority
+        self.dueDate = dueDate
+    }
+}
+
+// In-memory sorting becomes simple
+let sortedTasks = tasks.sorted() // Uses Comparable
+let reversedTasks = tasks.sorted(by: >) // Reverse order
+```
+
+**Benefits:**
+- Cleaner sorting code
+- Reusable sort logic
+- Works with standard Swift sorting
+
+## Pre-Filtering Pattern
+
+Define multiple @Query properties with different filters:
+
+```swift
+struct TaskList: View {
+    @Query(filter: #Predicate<Task> { $0.isCompleted == false })
+    var activeTasks: [Task]
+    
+    @Query(filter: #Predicate<Task> { $0.isCompleted == true })
+    var completedTasks: [Task]
+    
+    @Query(filter: #Predicate<Task> { $0.priority == 3 })
+    var highPriorityTasks: [Task]
+    
+    @State private var selectedFilter = 0
+    
+    var currentTasks: [Task] {
+        switch selectedFilter {
+        case 0: return activeTasks
+        case 1: return completedTasks
+        case 2: return highPriorityTasks
+        default: return activeTasks
+        }
+    }
+    
+    var body: some View {
+        VStack {
+            Picker("Filter", selection: $selectedFilter) {
+                Text("Active").tag(0)
+                Text("Completed").tag(1)
+                Text("High Priority").tag(2)
+            }
+            .pickerStyle(.segmented)
+            
+            List(currentTasks) { task in
+                Text(task.title)
+            }
+        }
+    }
+}
+```
+
+**Benefits:**
+- Fast switching between filters
+- No re-querying needed
+- Automatic updates for all queries
+- Clean separation of concerns
+
+**Trade-off:** Uses more memory (multiple query results in memory)

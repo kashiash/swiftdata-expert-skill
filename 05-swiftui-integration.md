@@ -952,3 +952,90 @@ struct ContentView: View {
 - Direct data display
 - No complex filtering logic
 - No async operations needed
+
+
+## Container Configuration
+
+### onSetup Parameter
+
+Execute code after container creation:
+
+```swift
+.modelContainer(
+    for: [Task.self, Project.self],
+    inMemory: true
+) { result in
+    switch result {
+    case .success(let container):
+        // Add mock data
+        let task1 = Task(title: "Sample Task")
+        let task2 = Task(title: "Another Task")
+        let project = Project(name: "Sample Project")
+        
+        container.mainContext.insert(task1)
+        container.mainContext.insert(task2)
+        container.mainContext.insert(project)
+        
+    case .failure(let error):
+        print("Failed to create container: \(error.localizedDescription)")
+    }
+}
+```
+
+**Use cases:**
+- Add preview/test data
+- Configure container settings
+- Handle initialization errors
+- Setup for multiple models
+
+**Important:** Only models specified in `for:` parameter can be inserted.
+
+### Container Scope
+
+Control where container is available:
+
+```swift
+// App-wide scope
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+        .modelContainer(for: Task.self) // Available everywhere
+    }
+}
+
+// View-specific scope
+struct TaskSection: View {
+    var body: some View {
+        TaskList()
+            .modelContainer(for: Task.self) // Only for this view tree
+    }
+}
+
+// Multiple containers for different sections
+struct ContentView: View {
+    var body: some View {
+        TabView {
+            TasksView()
+                .modelContainer(for: Task.self)
+            
+            NotesView()
+                .modelContainer(for: Note.self)
+        }
+    }
+}
+```
+
+**Benefits:**
+- Isolate data contexts
+- Improve performance (smaller containers)
+- Separate concerns
+- Test specific features
+
+**When to use multiple containers:**
+- Large apps with distinct features
+- Performance issues with single large container
+- Different storage requirements
+- Testing isolation

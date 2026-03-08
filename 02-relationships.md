@@ -449,6 +449,116 @@ class Post {
 
 **CloudKit rule:** All relationships must be optional
 
+## Best Practices
+
+### Model Independence
+
+Design models to exist independently:
+
+```swift
+// ✅ Good - both can exist independently
+@Model
+class Author {
+    var name: String
+    @Relationship(deleteRule: .nullify, inverse: \Book.author)
+    var books: [Book] = []
+    
+    init(name: String) {
+        self.name = name
+    }
+}
+
+@Model
+class Book {
+    var title: String
+    var author: Author? // Optional
+    
+    init(title: String, author: Author? = nil) {
+        self.title = title
+        self.author = author
+    }
+}
+
+// ❌ Avoid - Book cannot exist without Author
+@Model
+class Book {
+    var title: String
+    var author: Author // Non-optional creates dependency
+    
+    init(title: String, author: Author) {
+        self.title = title
+        self.author = author
+    }
+}
+```
+
+**Benefits:**
+- Flexible delete rules
+- No invalid states
+- Easier testing
+- Better data integrity
+
+### Relationships & Autosave
+
+When autosave is disabled, explicitly save after relationship operations:
+
+```swift
+// Autosave disabled
+let author = Author(name: "Jane")
+let book = Book(title: "SwiftData Guide")
+
+modelContext.insert(author)
+modelContext.insert(book)
+
+// ❌ Wrong - accessing before save can crash
+book.author = author
+print(book.author?.name) // Potential crash!
+
+// ✅ Correct - save first
+book.author = author
+try? modelContext.save()
+print(book.author?.name) // Safe
+```
+
+**Rule:** With autosave off, call save() after each SwiftData operation involving relationships.
+
+### Sorting by Related Properties
+
+Sort by optional related properties:
+
+```swift
+// Sort by related property
+@Query(sort: \Book.author?.name) var books
+
+// nil values sorted last by default
+```
+
+### Filtering by Related Properties
+
+Access related properties in predicates:
+
+```swift
+@Query(
+    filter: #Predicate<Book> { book in
+        book.author?.name == "Jane Doe"
+    }
+) var books
+
+// Multiple levels
+@Query(
+    filter: #Predicate<Book> { book in
+        book.author?.publisher?.country == "USA"
+    }
+) var books
+```
+
+**Pattern for nil checks:**
+```swift
+#Predicate<Book> { book in
+    book.author != nil && book.author!.name.contains("Jane")
+}
+```
+
 ## Common Mistakes
 
 ```swift
