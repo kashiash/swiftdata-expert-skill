@@ -688,3 +688,267 @@ struct EditView: View {
     }
 }
 ```
+
+
+## Observable Objects Pattern
+
+### Basic Observable Class
+
+```swift
+import SwiftData
+
+@Observable
+class DataManager {
+    var items: [Item] = []
+    private var modelContext: ModelContext
+    
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+    
+    func fetchItems() async throws {
+        let descriptor = FetchDescriptor<Item>(
+            sortBy: [SortDescriptor(\.name)]
+        )
+        items = try modelContext.fetch(descriptor)
+    }
+    
+    func addItem(name: String) {
+        let item = Item(name: name)
+        modelContext.insert(item)
+    }
+    
+    func deleteItem(_ item: Item) {
+        modelContext.delete(item)
+    }
+    
+    func updateItem(_ item: Item, name: String) {
+        item.name = name
+    }
+}
+```
+
+### Using in SwiftUI
+
+```swift
+struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @State private var dataManager: DataManager?
+    
+    var body: some View {
+        List(dataManager?.items ?? []) { item in
+            Text(item.name)
+        }
+        .task {
+            dataManager = DataManager(modelContext: modelContext)
+            try? await dataManager?.fetchItems()
+        }
+        .toolbar {
+            Button("Add", systemImage: "plus") {
+                dataManager?.addItem(name: "New Item")
+            }
+        }
+    }
+}
+```
+
+### With Search and Filter
+
+```swift
+@Observable
+class UserManager {
+    var users: [User] = []
+    var searchText = ""
+    private var modelContext: ModelContext
+    
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+    
+    var filteredUsers: [User] {
+        if searchText.isEmpty {
+            return users
+        }
+        return users.filter { $0.name.localizedStandardContains(searchText) }
+    }
+    
+    func fetchUsers() async throws {
+        let descriptor = FetchDescriptor<User>(
+            sortBy: [SortDescriptor(\.name)]
+        )
+        users = try modelContext.fetch(descriptor)
+    }
+}
+
+struct UserListView: View {
+    @State private var manager: UserManager?
+    @Environment(\.modelContext) private var modelContext
+    
+    var body: some View {
+        List(manager?.filteredUsers ?? []) { user in
+            Text(user.name)
+        }
+        .searchable(text: Binding(
+            get: { manager?.searchText ?? "" },
+            set: { manager?.searchText = $0 }
+        ))
+        .task {
+            manager = UserManager(modelContext: modelContext)
+            try? await manager?.fetchUsers()
+        }
+    }
+}
+```
+
+### Passing Models to Subviews
+
+```swift
+struct ItemListView: View {
+    @State private var manager: DataManager?
+    
+    var body: some View {
+        List(manager?.items ?? []) { item in
+            NavigationLink(value: item) {
+                Text(item.name)
+            }
+        }
+        .navigationDestination(for: Item.self) { item in
+            EditItemView(item: item)
+        }
+    }
+}
+
+struct EditItemView: View {
+    @Bindable var item: Item
+    
+    var body: some View {
+        Form {
+            TextField("Name", text: $item.name)
+        }
+    }
+}
+```
+
+### Background Operations
+
+```swift
+@Observable
+class ImportManager {
+    var progress: Double = 0
+    var isImporting = false
+    private var modelContext: ModelContext
+    
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+    
+    func importData(_ data: [ItemData]) async {
+        isImporting = true
+        let total = Double(data.count)
+        
+        for (index, itemData) in data.enumerated() {
+            let item = Item(name: itemData.name)
+            modelContext.insert(item)
+            progress = Double(index + 1) / total
+        }
+        
+        try? modelContext.save()
+        isImporting = false
+    }
+}
+```
+
+### Error Handling
+
+```swift
+@Observable
+class DataManager {
+    var items: [Item] = []
+    var errorMessage: String?
+    var isLoading = false
+    private var modelContext: ModelContext
+    
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+    
+    func fetchItems() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let descriptor = FetchDescriptor<Item>()
+            items = try modelContext.fetch(descriptor)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isLoading = false
+    }
+}
+
+struct ContentView: View {
+    @State private var manager: DataManager?
+    
+    var body: some View {
+        Group {
+            if manager?.isLoading == true {
+                ProgressView()
+            } else if let error = manager?.errorMessage {
+                Text("Error: \(error)")
+            } else {
+                List(manager?.items ?? []) { item in
+                    Text(item.name)
+                }
+            }
+        }
+        .task {
+            manager = DataManager(modelContext: modelContext)
+            await manager?.fetchItems()
+        }
+    }
+}
+```
+
+### Multiple Managers
+
+```swift
+struct ContentView: View {
+    @State private var userManager: UserManager?
+    @State private var postManager: PostManager?
+    @Environment(\.modelContext) private var modelContext
+    
+    var body: some View {
+        TabView {
+            UserListView(manager: userManager)
+                .tabItem { Label("Users", systemImage: "person") }
+            
+            PostListView(manager: postManager)
+                .tabItem { Label("Posts", systemImage: "doc") }
+        }
+        .task {
+            userManager = UserManager(modelContext: modelContext)
+            postManager = PostManager(modelContext: modelContext)
+            
+            try? await userManager?.fetchUsers()
+            try? await postManager?.fetchPosts()
+        }
+    }
+}
+```
+
+## When to Use Observable Objects
+
+**Use Observable Objects when:**
+- Complex business logic beyond simple CRUD
+- Need to share state across multiple views
+- Async operations with progress tracking
+- Error handling and loading states
+- Background processing
+- Computed properties based on data
+
+**Use @Query directly when:**
+- Simple list/detail views
+- Direct data display
+- No complex filtering logic
+- No async operations needed

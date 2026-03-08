@@ -68,12 +68,13 @@ This skill covers all essential SwiftData topics:
 - **Models & Attributes** - @Model macro, property types, attributes, transformers
 - **Relationships** - One-to-one, one-to-many, many-to-many, delete rules
 - **Queries & Predicates** - @Query, #Predicate, FetchDescriptor, filtering, sorting
-- **Context & Saves** - ModelContext, ModelContainer, autosave, transactions
-- **SwiftUI Integration** - @Query, @Bindable, dynamic sorting/filtering
-- **Performance** - Batch operations, faulting, prefetching, optimization
+- **Context & Saves** - ModelContext, ModelContainer, autosave, transactions, undo/redo
+- **SwiftUI Integration** - @Query, @Bindable, Observable objects, dynamic sorting/filtering
+- **Performance** - Batch operations, concurrency, faulting, prefetching, optimization
 - **CloudKit Sync** - iCloud setup, requirements, troubleshooting
 - **Migrations** - Schema changes, migration plans, versioning
 - **Testing & Previews** - In-memory containers, unit tests, preview data
+- **Network Integration** - URLSession, Codable, fetch/save patterns, image handling, sync strategies
 
 ## Usage
 
@@ -107,9 +108,7 @@ This skill compilation is based on publicly available knowledge from the followi
 ### Primary Reference Materials
 
 - **SwiftData by Example** by Paul Hudson
-  - Comprehensive book covering all SwiftData features
   - Website: [hackingwithswift.com](https://www.hackingwithswift.com)
-  - Used as primary reference for patterns and examples
 
 - **Apple SwiftData Documentation**
   - Official Apple documentation and API references
@@ -120,6 +119,14 @@ This skill compilation is based on publicly available knowledge from the followi
 ### Additional Reference Articles
 
 The following publicly available articles were consulted as reference materials:
+
+**SwiftData Mastery Series** by Big Mountain Studio:
+- "Undo and Redo" - UndoManager, rollback, action names
+- "Concurrency" - Background contexts, async/await patterns
+- "URLSession" - Network integration with SwiftData
+- "Using Observable Objects" - Integration with @Observable
+- "Measuring Performance" - Performance profiling techniques
+- "Versioning" - Schema versioning strategies
 
 **Architecture and Patterns:**
 - "The Art of SwiftData in 2025: From Scattered Pieces to a Masterpiece" by Mathis Gaignet
@@ -144,9 +151,6 @@ The following publicly available articles were consulted as reference materials:
 
 **Migration and Troubleshooting:**
 - "Rozwiązywanie problemów migracji CoreData → SwiftData: Obowiązkowe atrybuty i walidacja"
-
-**SwiftData by Example Series (Polish translations):**
-- Parts 1-10, 19: Comprehensive tutorial series covering all aspects of SwiftData
 
 ### Related Medium Articles
 
@@ -225,6 +229,14 @@ git push
 ```
 
 ## Version History
+
+- **1.1.0** (2024) - Enhanced coverage
+  - Added Network Integration (URLSession patterns)
+  - Added Undo/Redo operations
+  - Added Observable Objects pattern
+  - Added Concurrency patterns
+  - Enhanced performance debugging
+  - 10 detailed section files
 
 - **1.0.0** (2024) - Initial release
   - Complete coverage of SwiftData fundamentals

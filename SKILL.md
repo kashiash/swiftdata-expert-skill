@@ -58,6 +58,7 @@ When user reports SwiftData issue:
 | "CloudKit not syncing" | 07-cloudkit-sync.md | Make properties optional, remove @Attribute(.unique) |
 | "Migration failed" | 08-migrations.md | Define migration plan, handle schema changes |
 | "Performance issues" | 06-performance.md | Add batch operations, optimize queries |
+| "Network data not saving" | 10-network-integration.md | Use MainActor for inserts, handle Codable |
 
 ## Common Errors → Next Best Move
 
@@ -76,6 +77,9 @@ When user reports SwiftData issue:
 
 // ERROR: Silent save failure
 // FIX: Check CloudKit requirements (optional properties, no unique)
+
+// ERROR: Network data not inserting
+// FIX: Use MainActor.run for modelContext.insert after URLSession
 ```
 
 ## Quick Reference
@@ -146,12 +150,13 @@ try modelContext.save()
 - **[01-models-attributes.md](01-models-attributes.md)** - Model definitions, attributes, transformers
 - **[02-relationships.md](02-relationships.md)** - One-to-one, one-to-many, many-to-many, delete rules
 - **[03-queries-predicates.md](03-queries-predicates.md)** - @Query, #Predicate, FetchDescriptor, sorting, filtering
-- **[04-context-saves.md](04-context-saves.md)** - ModelContext, ModelContainer, autosave, manual saves
-- **[05-swiftui-integration.md](05-swiftui-integration.md)** - @Query, @Bindable, dynamic sorting/filtering
-- **[06-performance.md](06-performance.md)** - Batch operations, faulting, prefetching, indexes
+- **[04-context-saves.md](04-context-saves.md)** - ModelContext, ModelContainer, autosave, manual saves, undo/redo
+- **[05-swiftui-integration.md](05-swiftui-integration.md)** - @Query, @Bindable, Observable objects, dynamic sorting/filtering
+- **[06-performance.md](06-performance.md)** - Batch operations, concurrency, faulting, prefetching, indexes
 - **[07-cloudkit-sync.md](07-cloudkit-sync.md)** - iCloud setup, requirements, troubleshooting
 - **[08-migrations.md](08-migrations.md)** - Schema changes, migration plans, versioning
 - **[09-testing-previews.md](09-testing-previews.md)** - In-memory containers, preview data, testing strategies
+- **[10-network-integration.md](10-network-integration.md)** - URLSession, Codable, fetch/save, image handling, sync patterns
 
 ## Critical Rules
 

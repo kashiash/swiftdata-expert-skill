@@ -554,3 +554,377 @@ List(posts) { post in
 var descriptor = FetchDescriptor<Post>()
 descriptor.relationshipKeyPathsForPrefetching = [\.author]
 ```
+
+
+## Concurrency
+
+### Thread Safety Rules
+
+**Critical:**
+- ModelContext is NOT thread-safe
+- Cannot share ModelContext across threads
+- Each Task needs its own ModelContext
+- ModelContainer CAN be shared
+
+### Background Context
+
+```swift
+let container = try ModelContainer(for: User.self)
+
+Task.detached {
+    let backgroundContext = ModelContext(container)
+    
+    // Perform operations
+    for i in 1...1000 {
+        backgroundContext.insert(User(name: "User \(i)"))
+    }
+    
+    try? backgroundContext.save()
+}
+```
+
+### Background Insert
+
+```swift
+func importUsers(_ data: [UserData]) async {
+    await Task.detached {
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        
+        for userData in data {
+            let user = User(name: userData.name, age: userData.age)
+            context.insert(user)
+        }
+        
+        try? context.save()
+    }.value
+}
+```
+
+### Background Fetch
+
+```swift
+func fetchLargeDataset() async -> [User] {
+    await Task.detached {
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<User>(
+            sortBy: [SortDescriptor(\.name)]
+        )
+        descriptor.fetchLimit = 100000
+        
+        return (try? context.fetch(descriptor)) ?? []
+    }.value
+}
+
+// Use in view
+.task {
+    let users = await fetchLargeDataset()
+    // Update UI on main actor
+    await MainActor.run {
+        self.users = users
+    }
+}
+```
+
+### Background Update
+
+```swift
+func updateAllUsers() async {
+    await Task.detached {
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<User>()
+        let users = try? context.fetch(descriptor)
+        
+        context.autosaveEnabled = false
+        users?.forEach { user in
+            user.lastUpdated = .now
+        }
+        try? context.save()
+    }.value
+}
+```
+
+### Background Delete
+
+```swift
+func deleteOldRecords() async {
+    await Task.detached {
+        let context = ModelContext(container)
+        let cutoff = Date.now.addingTimeInterval(-86400 * 30)
+        let descriptor = FetchDescriptor<User>(
+            predicate: #Predicate { $0.createdAt < cutoff }
+        )
+        
+        let users = try? context.fetch(descriptor)
+        context.autosaveEnabled = false
+        users?.forEach { context.delete($0) }
+        try? context.save()
+    }.value
+}
+```
+
+### Main Actor Operations
+
+```swift
+@MainActor
+func updateUI(with users: [User]) {
+    // Safe to update UI
+    self.users = users
+}
+
+func fetchAndDisplay() async {
+    let context = ModelContext(container)
+    let descriptor = FetchDescriptor<User>()
+    let users = try? context.fetch(descriptor)
+    
+    await MainActor.run {
+        self.users = users ?? []
+    }
+}
+```
+
+### Actor-Isolated Context
+
+```swift
+actor DataProcessor {
+    private let context: ModelContext
+    
+    init(container: ModelContainer) {
+        self.context = ModelContext(container)
+    }
+    
+    func processData(_ data: [UserData]) async throws {
+        context.autosaveEnabled = false
+        
+        for userData in data {
+            let user = User(name: userData.name)
+            context.insert(user)
+        }
+        
+        try context.save()
+    }
+}
+
+// Usage
+let processor = DataProcessor(container: container)
+try await processor.processData(userData)
+```
+
+### Concurrent Operations
+
+```swift
+func importMultipleSources() async {
+    await withTaskGroup(of: Void.self) { group in
+        group.addTask {
+            let context = ModelContext(container)
+            // Import source 1
+        }
+        
+        group.addTask {
+            let context = ModelContext(container)
+            // Import source 2
+        }
+        
+        group.addTask {
+            let context = ModelContext(container)
+            // Import source 3
+        }
+    }
+}
+```
+
+### Progress Tracking
+
+```swift
+@Observable
+class ImportManager {
+    var progress: Double = 0
+    var isImporting = false
+    
+    func importData(_ data: [UserData]) async {
+        isImporting = true
+        let total = Double(data.count)
+        
+        await Task.detached {
+            let context = ModelContext(self.container)
+            context.autosaveEnabled = false
+            
+            for (index, userData) in data.enumerated() {
+                let user = User(name: userData.name)
+                context.insert(user)
+                
+                await MainActor.run {
+                    self.progress = Double(index + 1) / total
+                }
+            }
+            
+            try? context.save()
+        }.value
+        
+        isImporting = false
+    }
+}
+```
+
+### Chunked Processing
+
+```swift
+func processInChunks(data: [UserData], chunkSize: Int = 100) async {
+    for chunk in data.chunked(into: chunkSize) {
+        await Task.detached {
+            let context = ModelContext(container)
+            context.autosaveEnabled = false
+            
+            for userData in chunk {
+                let user = User(name: userData.name)
+                context.insert(user)
+            }
+            
+            try? context.save()
+        }.value
+    }
+}
+
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
+    }
+}
+```
+
+## Concurrency Best Practices
+
+1. **Always create new context for background work**
+   ```swift
+   // ✅ CORRECT
+   Task.detached {
+       let context = ModelContext(container)
+   }
+   
+   // ❌ WRONG
+   Task.detached {
+       modelContext.insert(user) // Crash!
+   }
+   ```
+
+2. **Pass container, not context**
+   ```swift
+   // ✅ CORRECT
+   func process(container: ModelContainer) {
+       let context = ModelContext(container)
+   }
+   
+   // ❌ WRONG
+   func process(context: ModelContext) {
+       // Context not thread-safe
+   }
+   ```
+
+3. **Update UI on main actor**
+   ```swift
+   // ✅ CORRECT
+   await MainActor.run {
+       self.users = fetchedUsers
+   }
+   
+   // ❌ WRONG
+   self.users = fetchedUsers // May crash
+   ```
+
+4. **Disable autosave for batch operations**
+   ```swift
+   // ✅ CORRECT
+   context.autosaveEnabled = false
+   // ... operations
+   try context.save()
+   
+   // ❌ WRONG
+   // ... operations (saves after each)
+   ```
+
+5. **Use Task.detached for heavy work**
+   ```swift
+   // ✅ CORRECT - Doesn't block main thread
+   Task.detached {
+       let context = ModelContext(container)
+       // Heavy work
+   }
+   
+   // ❌ WRONG - Blocks main thread
+   Task {
+       // Heavy work on main actor
+   }
+   ```
+
+## Common Concurrency Mistakes
+
+```swift
+// ❌ WRONG: Sharing context
+let sharedContext = ModelContext(container)
+Task { sharedContext.insert(user1) }
+Task { sharedContext.insert(user2) } // Crash!
+
+// ✅ CORRECT: Separate contexts
+Task {
+    let context = ModelContext(container)
+    context.insert(user1)
+}
+Task {
+    let context = ModelContext(container)
+    context.insert(user2)
+}
+
+// ❌ WRONG: UI update in background
+Task.detached {
+    self.users = fetchedUsers // Crash!
+}
+
+// ✅ CORRECT: UI update on main actor
+Task.detached {
+    let users = fetchedUsers
+    await MainActor.run {
+        self.users = users
+    }
+}
+
+// ❌ WRONG: Passing context to actor
+actor Processor {
+    func process(context: ModelContext) { } // Not thread-safe
+}
+
+// ✅ CORRECT: Passing container
+actor Processor {
+    func process(container: ModelContainer) {
+        let context = ModelContext(container)
+    }
+}
+```
+
+## Performance Debugging
+
+### Enable SwiftData Logging
+
+Add to scheme environment variables:
+```
+SWIFTDATA_DEBUG = 1  // Basic logging
+SWIFTDATA_DEBUG = 2  // SQL queries
+OS_ACTIVITY_MODE = disable  // Reduce noise
+```
+
+### Manual Timing
+
+```swift
+let start = CFAbsoluteTimeGetCurrent()
+// Operation
+let elapsed = CFAbsoluteTimeGetCurrent() - start
+print("Time: \(elapsed)s")
+```
+
+### Time Profiler
+
+1. Product → Profile → Time Profiler
+2. Look for `modelContext.save()` spikes
+3. Look for `modelContext.fetch()` bottlenecks
+4. Check main thread blocking

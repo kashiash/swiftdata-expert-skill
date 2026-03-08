@@ -554,3 +554,269 @@ func verifySave() {
     }
 }
 ```
+
+
+## Undo and Redo
+
+### Enable UndoManager
+
+#### Via ModelContainer (Recommended)
+
+```swift
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+        .modelContainer(for: User.self, isUndoEnabled: true)
+    }
+}
+
+// Access in view
+@Environment(\.undoManager) var undoManager
+```
+
+#### Via ModelContext (Manual)
+
+```swift
+// Enable for specific view
+.onAppear {
+    modelContext.undoManager = UndoManager()
+}
+
+.onDisappear {
+    modelContext.undoManager = nil
+}
+
+// Access via context
+modelContext.undoManager?.undo()
+```
+
+### Undo Operations
+
+```swift
+// Undo last change
+modelContext.undoManager?.undo()
+
+// Check if can undo
+if modelContext.undoManager?.canUndo == true {
+    // Enable undo button
+}
+
+// Get undo action name
+let actionName = modelContext.undoManager?.undoActionName
+```
+
+### Redo Operations
+
+```swift
+// Redo last undone change
+modelContext.undoManager?.redo()
+
+// Check if can redo
+if modelContext.undoManager?.canRedo == true {
+    // Enable redo button
+}
+
+// Get redo action name
+let actionName = modelContext.undoManager?.redoActionName
+```
+
+### Action Names
+
+```swift
+// Set custom action name
+func deleteUser(_ user: User) {
+    modelContext.delete(user)
+    modelContext.undoManager?.setActionName("Delete User")
+}
+
+// Display in UI
+Button("Undo \(undoManager?.undoActionName ?? "")") {
+    undoManager?.undo()
+}
+.disabled(undoManager?.canUndo == false)
+```
+
+### Rollback All Changes
+
+```swift
+// Rollback requires autosave disabled
+modelContext.autosaveEnabled = false
+
+// Make changes
+user.name = "New Name"
+user.age = 30
+
+// Rollback all changes at once
+if modelContext.hasChanges {
+    modelContext.rollback()
+}
+
+// Re-enable autosave
+modelContext.autosaveEnabled = true
+```
+
+**Important:** `rollback()` is NOT part of UndoManager - it discards ALL unsaved changes
+
+### Limit Undo Levels
+
+```swift
+// Limit number of undo operations
+modelContext.undoManager?.levelsOfUndo = 10
+
+// Unlimited (default)
+modelContext.undoManager?.levelsOfUndo = 0
+```
+
+### Scope Undo to Specific Views
+
+```swift
+struct EditView: View {
+    @Environment(\.modelContext) var modelContext
+    @Bindable var user: User
+    
+    var body: some View {
+        Form {
+            TextField("Name", text: $user.name)
+        }
+        .onAppear {
+            // Enable undo only for this view
+            modelContext.undoManager = UndoManager()
+        }
+        .onDisappear {
+            // Disable to free memory
+            modelContext.undoManager = nil
+        }
+    }
+}
+```
+
+### Grouping Operations
+
+```swift
+// Group multiple changes into single undo
+modelContext.undoManager?.beginUndoGrouping()
+
+user.name = "Alice"
+user.age = 30
+user.email = "alice@example.com"
+
+modelContext.undoManager?.endUndoGrouping()
+modelContext.undoManager?.setActionName("Update User")
+
+// All changes undone together
+```
+
+### System Gestures
+
+```swift
+// When isUndoEnabled: true, system gestures work:
+// - Three-finger swipe (iPad)
+// - Shake to undo (iPhone)
+// - Cmd+Z / Cmd+Shift+Z (Mac)
+
+.modelContainer(for: User.self, isUndoEnabled: true)
+```
+
+**Note:** System gestures may not work consistently in Simulator
+
+## Undo/Redo Patterns
+
+### Undo Button
+
+```swift
+struct ContentView: View {
+    @Environment(\.undoManager) var undoManager
+    
+    var body: some View {
+        VStack {
+            // Content
+            
+            HStack {
+                Button("Undo") {
+                    undoManager?.undo()
+                }
+                .disabled(undoManager?.canUndo == false)
+                
+                Button("Redo") {
+                    undoManager?.redo()
+                }
+                .disabled(undoManager?.canRedo == false)
+            }
+        }
+    }
+}
+```
+
+### Undo with Confirmation
+
+```swift
+func deleteUser(_ user: User) {
+    let userName = user.name
+    
+    modelContext.delete(user)
+    modelContext.undoManager?.setActionName("Delete \(userName)")
+    
+    // Show undo toast
+    showUndoToast(message: "Deleted \(userName)")
+}
+
+func showUndoToast(message: String) {
+    // Show temporary message with undo button
+}
+```
+
+### Clear Undo Stack
+
+```swift
+// Remove all undo/redo operations
+modelContext.undoManager?.removeAllActions()
+```
+
+## Common Mistakes
+
+```swift
+// ❌ WRONG: Using rollback with autosave enabled
+modelContext.rollback() // Fails silently
+
+// ✅ CORRECT: Disable autosave first
+modelContext.autosaveEnabled = false
+modelContext.rollback()
+modelContext.autosaveEnabled = true
+
+// ❌ WRONG: Forgetting to set action names
+modelContext.delete(user)
+// Undo button shows generic "Undo"
+
+// ✅ CORRECT: Set descriptive names
+modelContext.delete(user)
+modelContext.undoManager?.setActionName("Delete User")
+
+// ❌ WRONG: Not checking canUndo/canRedo
+Button("Undo") { undoManager?.undo() }
+// Button always enabled
+
+// ✅ CORRECT: Disable when not available
+Button("Undo") { undoManager?.undo() }
+    .disabled(undoManager?.canUndo == false)
+
+// ❌ WRONG: Keeping UndoManager always enabled
+// Uses memory for undo stack
+
+// ✅ CORRECT: Enable only when needed
+.onAppear { modelContext.undoManager = UndoManager() }
+.onDisappear { modelContext.undoManager = nil }
+```
+
+## Undo vs Rollback
+
+| Feature | Undo | Rollback |
+|---------|------|----------|
+| Granularity | Single operation | All changes |
+| Requires | UndoManager | Autosave disabled |
+| Can redo | Yes | No |
+| Action names | Yes | No |
+| Memory | Uses stack | No overhead |
+| Use case | User-facing | Error recovery |

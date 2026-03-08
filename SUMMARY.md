@@ -12,12 +12,13 @@ skills/swiftdata-expert/
 ├── 01-models-attributes.md           # Model definitions, attributes, transformers
 ├── 02-relationships.md               # All relationship types and delete rules
 ├── 03-queries-predicates.md          # Queries, predicates, filtering, sorting
-├── 04-context-saves.md               # Context management, saves, transactions
-├── 05-swiftui-integration.md         # SwiftUI patterns, @Query, @Bindable
-├── 06-performance.md                 # Optimization, batch operations, faulting
+├── 04-context-saves.md               # Context management, saves, undo/redo
+├── 05-swiftui-integration.md         # SwiftUI patterns, @Query, @Bindable, Observable
+├── 06-performance.md                 # Optimization, concurrency, batch operations
 ├── 07-cloudkit-sync.md               # iCloud setup, requirements, troubleshooting
 ├── 08-migrations.md                  # Schema changes, migration plans
 ├── 09-testing-previews.md            # Testing strategies, preview data
+├── 10-network-integration.md         # URLSession, Codable, fetch/save, sync
 ├── README.md                         # Installation, credits, usage
 ├── LICENSE                           # MIT license with attribution
 └── SUMMARY.md                        # This file
@@ -149,12 +150,12 @@ User: "CloudKit sync not working"
 
 ## Metrics
 
-- **Total files**: 12
-- **Total lines**: ~3,500
-- **Code examples**: ~200+
-- **Patterns covered**: ~100+
-- **Common mistakes**: ~50+
-- **Troubleshooting guides**: 9
+- **Total files**: 13
+- **Total lines**: ~4,200
+- **Code examples**: ~250+
+- **Patterns covered**: ~120+
+- **Common mistakes**: ~60+
+- **Troubleshooting guides**: 10
 
 ## Next Steps
 
@@ -182,10 +183,12 @@ User: "CloudKit sync not working"
 | Routing map | ✅ | ✅ |
 | Quick reference | ✅ | ✅ |
 | Code examples | Moderate | Extensive |
-| Sections | 8 | 9 |
+| Sections | 8 | 10 |
 | CloudKit guide | Basic | Comprehensive |
 | Testing guide | Basic | Comprehensive |
 | Migration guide | Advanced | Comprehensive |
+| Network integration | ❌ | ✅ |
+| Concurrency patterns | ❌ | ✅ |
 
 ## Key Improvements Over Polish Version
 
@@ -194,9 +197,12 @@ User: "CloudKit sync not working"
 3. **Practicality**: Focus on production patterns
 4. **Navigation**: Better routing and cross-references
 5. **Troubleshooting**: Dedicated sections for common issues
-6. **Performance**: Comprehensive optimization guide
+6. **Performance**: Comprehensive optimization guide with concurrency
 7. **Testing**: Complete testing strategies
 8. **CloudKit**: Detailed sync requirements
+9. **Network Integration**: URLSession patterns and sync strategies
+10. **Undo/Redo**: Complete undo management patterns
+11. **Observable Objects**: Modern SwiftUI architecture patterns
 
 ## Validation
 
