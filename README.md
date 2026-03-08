@@ -72,25 +72,6 @@ This skill is based on knowledge from multiple authoritative sources:
   - WWDC23 Session 10187: Meet SwiftData
   - WWDC23 Session 10195: Build an app with SwiftData
 
-### Additional Contributors
-
-- **Mathis Gaignet** - "The Art of SwiftData in 2025", "Deep dive into dynamic SwiftData queries"
-- **Mohammad Azam** - "SwiftData Architecture" patterns and best practices
-- **fatbobman** - "How to Dynamically Construct Complex Predicates in SwiftData"
-- **Various community articles** on SwiftData best practices, performance optimization, and real-world patterns
-
-### Skill Format
-
-- Based on the [Agent Skills open format](https://github.com/AvdLee/Core-Data-Agent-Skill)
-- Inspired by Antoine van der Lee's Core Data Agent Skill structure
-
-## License
-
-This skill compilation is provided under MIT License. Original source materials retain their respective licenses:
-
-- SwiftData by Example content © Paul Hudson
-- Apple documentation © Apple Inc.
-- Community articles © respective authors
 
 ## Contributing
 
@@ -118,18 +99,9 @@ Found an issue or have a suggestion? Please open an issue on GitHub or contact t
   - Migration strategies
   - Testing and preview patterns
 
-## Related Skills
 
-- Core Data Agent Skill (for Core Data projects)
-- SwiftUI Expert Skill (for SwiftUI patterns)
-- iOS Architecture Skill (for app architecture patterns)
 
-## Support
 
-For questions about:
-- **SwiftData itself**: Check Apple's documentation or Paul Hudson's SwiftData by Example
-- **This skill**: Open an issue on GitHub
-- **AI coding assistants**: Refer to your assistant's documentation
 
 ---
 
